@@ -5,19 +5,21 @@ import json
 import os
 from datetime import datetime
 from urllib.parse import urlparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from multiprocessing import Pool, cpu_count
 
 # Configuration
 BLOCKED_DOMAINS = ["wikipedia.org"]
 OUTPUT_DIR = "/home/aliy/Coding/crawler/output"
 OUTPUT_IMG_DIR = os.path.join(OUTPUT_DIR, "img")
 LAST_ID_FILE = os.path.join(OUTPUT_DIR, "last_id.txt")
-MAX_WORKERS = 5
-VERSION = "1.1"
+MAX_WORKERS_FETCH = 5
+MAX_WORKERS_SCREENSHOT = max(2, cpu_count() - 1)  # Use multiple CPU cores for screenshots
+VERSION = "1.2"
 
 # Ensure output directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -75,10 +77,44 @@ def get_og_data(html):
         }
 
 
+def take_screenshot_worker(url, output_path, item_id):
+    """Worker function for taking screenshot (must be picklable for multiprocessing)."""
+    for attempt in range(3):
+        try:
+            options = Options()
+            options.binary_location = "/usr/bin/chromium-browser"
+            options.add_argument("--headless=new")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-software-rasterizer")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--window-size=1920,1080")
+            options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+            
+            service = Service("/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
+            
+            # Set timeouts
+            driver.set_page_load_timeout(30)
+            driver.set_script_timeout(30)
+            
+            driver.get(url)
+            time.sleep(5)
+            driver.save_screenshot(output_path)
+            driver.quit()
+            
+            return True
+            
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(2)
+            else:
+                return False
+
+
 def take_screenshot(url, output_path, retries=2):
     """Take screenshot of the URL with retry mechanism."""
-    import logging
-    
     for attempt in range(retries + 1):
         try:
             options = Options()
@@ -151,22 +187,48 @@ def fetch_url_data(url_item, item_index, current_id):
     return result
 
 
-def process_screenshots(all_results):
-    """Process screenshots sequentially after fetching all data."""
-    print("\n=== TAKING SCREENSHOTS (Sequential) ===")
+def process_screenshots_parallel(all_results):
+    """Process screenshots in parallel using multiprocessing."""
+    print(f"\n=== TAKING SCREENSHOTS (Parallel - {MAX_WORKERS_SCREENSHOT} processes) ===")
     
-    for idx, result in enumerate(all_results, 1):
+    # Prepare screenshot tasks
+    screenshot_tasks = []
+    for result in all_results:
         url = result.get("url", "")
         item_id = result.get("id", "unknown")
         
         if url and url != "-":
             screenshot_path = os.path.join(OUTPUT_IMG_DIR, f"{item_id}.png")
-            print(f"[{idx}/{len(all_results)}] Taking screenshot for {item_id}...", end=" ")
-            
-            success = take_screenshot(url, screenshot_path, retries=2)
-            result["screenshot_status"] = "success" if success else "failed"
-            
-            print("✓" if success else "✗")
+            screenshot_tasks.append((url, screenshot_path, item_id))
+    
+    # Use ProcessPoolExecutor for parallel screenshot processing
+    results_status = {}
+    
+    with ProcessPoolExecutor(max_workers=MAX_WORKERS_SCREENSHOT) as executor:
+        futures = {
+            executor.submit(take_screenshot_worker, url, path, item_id): item_id
+            for url, path, item_id in screenshot_tasks
+        }
+        
+        completed = 0
+        for future in as_completed(futures):
+            item_id = futures[future]
+            try:
+                success = future.result()
+                results_status[item_id] = "success" if success else "failed"
+                completed += 1
+                status_symbol = "✓" if success else "✗"
+                print(f"[{completed}/{len(screenshot_tasks)}] {item_id} {status_symbol}")
+            except Exception as e:
+                results_status[item_id] = "failed"
+                completed += 1
+                print(f"[{completed}/{len(screenshot_tasks)}] {item_id} ✗ (Exception: {str(e)[:50]})")
+    
+    # Update screenshot status in results
+    for result in all_results:
+        item_id = result.get("id", "unknown")
+        if item_id in results_status:
+            result["screenshot_status"] = results_status[item_id]
         else:
             result["screenshot_status"] = "skipped"
 
@@ -198,10 +260,10 @@ def main():
     print(f"Starting ID: {current_id:08d}")
     print(f"Total URLs to process: {len(filtered)}")
 
-    # Process URLs with multithreading
+    # Process URLs with multithreading for fetching
     all_results = []
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS_FETCH) as executor:
         futures = {
             executor.submit(fetch_url_data, url_item, idx + 1, current_id + idx): idx
             for idx, url_item in enumerate(filtered)
@@ -214,8 +276,8 @@ def main():
     # Sort by ID to maintain order
     all_results.sort(key=lambda x: int(x["id"]))
 
-    # Process screenshots sequentially (more reliable)
-    process_screenshots(all_results)
+    # Process screenshots in parallel (multiprocessing)
+    process_screenshots_parallel(all_results)
 
     # Generate timestamp
     now = datetime.utcnow()
