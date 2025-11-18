@@ -17,7 +17,7 @@ OUTPUT_DIR = "/home/aliy/Coding/crawler/output"
 OUTPUT_IMG_DIR = os.path.join(OUTPUT_DIR, "img")
 LAST_ID_FILE = os.path.join(OUTPUT_DIR, "last_id.txt")
 MAX_WORKERS = 5
-VERSION = "1.0"
+VERSION = "1.1"
 
 # Ensure output directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -75,31 +75,51 @@ def get_og_data(html):
         }
 
 
-def take_screenshot(url, output_path):
-    """Take screenshot of the URL."""
-    try:
-        options = Options()
-        options.binary_location = "/usr/bin/chromium-browser"
-        options.add_argument("--headless=new")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--window-size=1920,1080")
-
-        service = Service("/usr/bin/chromedriver")
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.get(url)
-        time.sleep(3)
-        driver.save_screenshot(output_path)
-        driver.quit()
-        return True
-    except Exception as e:
-        print(f"Screenshot error for {url}: {e}")
-        return False
+def take_screenshot(url, output_path, retries=2):
+    """Take screenshot of the URL with retry mechanism."""
+    import logging
+    
+    for attempt in range(retries + 1):
+        try:
+            options = Options()
+            options.binary_location = "/usr/bin/chromium-browser"
+            options.add_argument("--headless=new")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-software-rasterizer")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--window-size=1920,1080")
+            options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+            
+            service = Service("/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
+            
+            # Set timeouts
+            driver.set_page_load_timeout(30)
+            driver.set_script_timeout(30)
+            
+            driver.get(url)
+            
+            # Wait for page to load (5-8 seconds)
+            time.sleep(5)
+            
+            driver.save_screenshot(output_path)
+            driver.quit()
+            
+            return True
+            
+        except Exception as e:
+            if attempt < retries:
+                print(f"Screenshot attempt {attempt + 1}/{retries + 1} failed for {url}: {str(e)[:100]}. Retrying...")
+                time.sleep(2)
+            else:
+                print(f"Screenshot failed after {retries + 1} attempts for {url}: {str(e)[:100]}")
+                return False
 
 
 def fetch_url_data(url_item, item_index, current_id):
-    """Fetch data for a single URL."""
+    """Fetch data for a single URL (without screenshot)."""
     result = {
         "id": f"{current_id:08d}",
         "title": url_item.get("title", "-"),
@@ -107,22 +127,17 @@ def fetch_url_data(url_item, item_index, current_id):
         "domain": extract_domain(url_item.get("href", "-")),
         "description": url_item.get("body", "-"),
         "og_metadata": {},
+        "screenshot_status": "pending",
     }
 
     url = url_item.get("href", "")
 
     if url:
         try:
-            resp = httpx.get(url, timeout=8, follow_redirects=True)
+            resp = httpx.get(url, timeout=10, follow_redirects=True)
             resp.raise_for_status()
             html = resp.text
             result["og_metadata"] = get_og_data(html)
-
-            # Take screenshot
-            screenshot_path = os.path.join(
-                OUTPUT_IMG_DIR, f"{current_id:08d}.png"
-            )
-            take_screenshot(url, screenshot_path)
 
         except Exception as e:
             result["og_metadata"] = {
@@ -132,8 +147,28 @@ def fetch_url_data(url_item, item_index, current_id):
                 "og:site_name": f"Error: {str(e)}",
             }
 
-    print(f"[{item_index}] Processed ID {current_id:08d}: {result['title'][:50]}")
+    print(f"[{item_index}] Fetched ID {current_id:08d}: {result['title'][:50]}")
     return result
+
+
+def process_screenshots(all_results):
+    """Process screenshots sequentially after fetching all data."""
+    print("\n=== TAKING SCREENSHOTS (Sequential) ===")
+    
+    for idx, result in enumerate(all_results, 1):
+        url = result.get("url", "")
+        item_id = result.get("id", "unknown")
+        
+        if url and url != "-":
+            screenshot_path = os.path.join(OUTPUT_IMG_DIR, f"{item_id}.png")
+            print(f"[{idx}/{len(all_results)}] Taking screenshot for {item_id}...", end=" ")
+            
+            success = take_screenshot(url, screenshot_path, retries=2)
+            result["screenshot_status"] = "success" if success else "failed"
+            
+            print("✓" if success else "✗")
+        else:
+            result["screenshot_status"] = "skipped"
 
 
 def main():
@@ -179,6 +214,9 @@ def main():
     # Sort by ID to maintain order
     all_results.sort(key=lambda x: int(x["id"]))
 
+    # Process screenshots sequentially (more reliable)
+    process_screenshots(all_results)
+
     # Generate timestamp
     now = datetime.utcnow()
     timestamp_iso = now.isoformat() + "Z"
@@ -209,9 +247,15 @@ def main():
     save_last_id(final_id)
     print(f"✓ Last ID updated: {final_id:08d} (saved in {LAST_ID_FILE})")
 
+    # Count screenshot results
+    screenshot_success = sum(1 for r in all_results if r.get("screenshot_status") == "success")
+    screenshot_failed = sum(1 for r in all_results if r.get("screenshot_status") == "failed")
+    screenshot_skipped = sum(1 for r in all_results if r.get("screenshot_status") == "skipped")
+
     # Summary
     print(f"\n=== SUMMARY ===")
     print(f"Total records: {len(all_results)}")
+    print(f"Screenshots - Success: {screenshot_success}, Failed: {screenshot_failed}, Skipped: {screenshot_skipped}")
     print(f"Generated at: {timestamp_iso}")
     print(f"Output file: {json_filepath}")
     print(f"Screenshots saved in: {OUTPUT_IMG_DIR}")
