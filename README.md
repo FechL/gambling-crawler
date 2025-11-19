@@ -16,18 +16,18 @@ Web crawler untuk mencari dan mengumpulkan informasi domain terkait perjudian me
 ## Instalasi
 
 1. Clone repository:
-
+```bash
 git clone https://github.com/FechL/keyword-based-crawler.git
 cd keyword-based-crawler
-
-1. Install dependencies:
-
+```
+2. Install dependencies:
+```bash
 pip install -r requirements.txt
-
+```
 3. Install Chromium dan ChromeDriver:
-
+```bash
 sudo apt-get install chromium-browser chromium-chromedriver
-
+```
 ## Penggunaan
 
 python crawler.py
