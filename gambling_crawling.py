@@ -13,17 +13,26 @@ from selenium.webdriver.chrome.options import Options
 from multiprocessing import Pool, cpu_count
 
 # Configuration
-BLOCKED_DOMAINS = ["wikipedia.org"]
 OUTPUT_DIR = "/home/aliy/Coding/crawler/output"
 OUTPUT_IMG_DIR = os.path.join(OUTPUT_DIR, "img")
 LAST_ID_FILE = os.path.join(OUTPUT_DIR, "last_id.txt")
 ALL_DOMAINS_FILE = os.path.join(OUTPUT_DIR, "all_domains.txt")
+BLOCKED_DOMAINS_FILE = os.path.join(OUTPUT_DIR, "..", "blocked_domains.txt")  # Relative to crawler root
+
+# Timeout configuration (in seconds)
+FETCH_TIMEOUT = 10
+OG_TIMEOUT = 10
+SCREENSHOT_TIMEOUT = 20
+
+# Processing configuration
 MAX_WORKERS_FETCH = 5
 MAX_WORKERS_SCREENSHOT = max(2, cpu_count() - 1)  # Use multiple CPU cores for screenshots
-VERSION = "1.3"
+MAX_RESULT = 10  # Maximum number of valid domains to process per run
+VERSION = "1.4"
 
-# Global set untuk tracking domain (anti-duplikasi)
+# Global sets untuk tracking (anti-duplikasi dan blocked domains)
 SEEN_DOMAINS = set()
+BLOCKED_DOMAINS = set()
 
 # Ensure output directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -60,6 +69,28 @@ def load_seen_domains():
         print(f"[INFO] No existing domains file. Starting fresh.")
 
 
+def load_blocked_domains():
+    """Load blocked domains from file into global set."""
+    global BLOCKED_DOMAINS
+    BLOCKED_DOMAINS = set()
+    
+    # Convert relative path to absolute
+    blocked_file = os.path.abspath(BLOCKED_DOMAINS_FILE)
+    
+    if os.path.exists(blocked_file):
+        try:
+            with open(blocked_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    domain = line.strip()
+                    if domain:
+                        BLOCKED_DOMAINS.add(domain)
+            print(f"[INFO] Loaded {len(BLOCKED_DOMAINS)} blocked domains from {blocked_file}")
+        except Exception as e:
+            print(f"[WARNING] Failed to load blocked domains: {str(e)}")
+    else:
+        print(f"[WARNING] Blocked domains file not found at {blocked_file}. Continuing without blocked list.")
+
+
 def save_last_id(last_id):
     """Save the last ID to file."""
     with open(LAST_ID_FILE, "w") as f:
@@ -74,6 +105,18 @@ def extract_domain(url):
         return domain if domain else "unknown"
     except:
         return "unknown"
+
+
+def is_domain_blocked(domain):
+    """Check if domain is in blocked list."""
+    if not domain or domain == "unknown":
+        return False
+    
+    # Check if domain or any subdomain matches blocked domains
+    for blocked in BLOCKED_DOMAINS:
+        if blocked in domain:
+            return True
+    return False
 
 
 def is_domain_duplicate(domain):
@@ -127,79 +170,68 @@ def get_og_data(html):
 
 def take_screenshot_worker(url, output_path, item_id):
     """Worker function for taking screenshot (must be picklable for multiprocessing)."""
-    for attempt in range(3):
-        try:
-            options = Options()
-            options.binary_location = "/usr/bin/chromium-browser"
-            options.add_argument("--headless=new")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-software-rasterizer")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--window-size=1920,1080")
-            options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
-            
-            service = Service("/usr/bin/chromedriver")
-            driver = webdriver.Chrome(service=service, options=options)
-            
-            # Set timeouts
-            driver.set_page_load_timeout(30)
-            driver.set_script_timeout(30)
-            
-            driver.get(url)
-            time.sleep(5)
-            driver.save_screenshot(output_path)
-            driver.quit()
-            
-            return True
-            
-        except Exception as e:
-            if attempt < 2:
-                time.sleep(2)
-            else:
-                return False
+    try:
+        options = Options()
+        options.binary_location = "/usr/bin/chromium-browser"
+        options.add_argument("--headless=new")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+        
+        service = Service("/usr/bin/chromedriver")
+        driver = webdriver.Chrome(service=service, options=options)
+        
+        # Set timeouts from configuration
+        driver.set_page_load_timeout(SCREENSHOT_TIMEOUT)
+        driver.set_script_timeout(SCREENSHOT_TIMEOUT)
+        
+        driver.get(url)
+        time.sleep(2)
+        driver.save_screenshot(output_path)
+        driver.quit()
+        
+        return True
+        
+    except Exception as e:
+        # No retry on timeout - just return False and continue
+        return False
 
 
 def take_screenshot(url, output_path, retries=2):
-    """Take screenshot of the URL with retry mechanism."""
-    for attempt in range(retries + 1):
-        try:
-            options = Options()
-            options.binary_location = "/usr/bin/chromium-browser"
-            options.add_argument("--headless=new")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-software-rasterizer")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--window-size=1920,1080")
-            options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
-            
-            service = Service("/usr/bin/chromedriver")
-            driver = webdriver.Chrome(service=service, options=options)
-            
-            # Set timeouts
-            driver.set_page_load_timeout(30)
-            driver.set_script_timeout(30)
-            
-            driver.get(url)
-            
-            # Wait for page to load (5-8 seconds)
-            time.sleep(5)
-            
-            driver.save_screenshot(output_path)
-            driver.quit()
-            
-            return True
-            
-        except Exception as e:
-            if attempt < retries:
-                print(f"Screenshot attempt {attempt + 1}/{retries + 1} failed for {url}: {str(e)[:100]}. Retrying...")
-                time.sleep(2)
-            else:
-                print(f"Screenshot failed after {retries + 1} attempts for {url}: {str(e)[:100]}")
-                return False
+    """Take screenshot of the URL (no retries on timeout)."""
+    try:
+        options = Options()
+        options.binary_location = "/usr/bin/chromium-browser"
+        options.add_argument("--headless=new")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+        
+        service = Service("/usr/bin/chromedriver")
+        driver = webdriver.Chrome(service=service, options=options)
+        
+        # Set timeouts from configuration
+        driver.set_page_load_timeout(SCREENSHOT_TIMEOUT)
+        driver.set_script_timeout(SCREENSHOT_TIMEOUT)
+        
+        driver.get(url)
+        time.sleep(2)
+        driver.save_screenshot(output_path)
+        driver.quit()
+        
+        return True
+        
+    except Exception as e:
+        # No retry on timeout - just return False
+        return False
 
 
 def fetch_url_data(url_item, item_index, current_id):
@@ -218,17 +250,18 @@ def fetch_url_data(url_item, item_index, current_id):
 
     if url:
         try:
-            resp = httpx.get(url, timeout=10, follow_redirects=True)
+            resp = httpx.get(url, timeout=FETCH_TIMEOUT, follow_redirects=True)
             resp.raise_for_status()
             html = resp.text
             result["og_metadata"] = get_og_data(html)
 
         except Exception as e:
+            # Include timeout in error message
             result["og_metadata"] = {
-                "og:title": f"Error: {str(e)}",
-                "og:description": f"Error: {str(e)}",
-                "og:type": f"Error: {str(e)}",
-                "og:site_name": f"Error: {str(e)}",
+                "og:title": f"Error: {str(e)[:100]}",
+                "og:description": f"Error: {str(e)[:100]}",
+                "og:type": f"Error: {str(e)[:100]}",
+                "og:site_name": f"Error: {str(e)[:100]}",
             }
 
     print(f"[{item_index}] Fetched ID {current_id:08d}: {result['title'][:50]}")
@@ -282,8 +315,9 @@ def process_screenshots_parallel(all_results):
 
 
 def main():
-    # Load existing domains first
+    # Load existing domains and blocked domains first
     load_seen_domains()
+    load_blocked_domains()
     
     # Get input
     query = input("Masukkan keyword: ")
@@ -291,34 +325,10 @@ def main():
 
     # Get search results
     print("Fetching search results...")
-    results = DDGS().text(query, max_results=10)
+    results = DDGS().text(query, max_results=50)  # Get more results to handle filtering
 
-    # Filter blocked domains
-    filtered = [
-        r
-        for r in results
-        if not any(b in r.get("href", "") for b in BLOCKED_DOMAINS)
-    ]
-
-    if not filtered:
-        print("Tidak ada hasil setelah filter.")
-        return
-
-    # Filter duplicate domains
-    new_domains_list = []
-    filtered_no_duplicates = []
-    
-    for r in filtered:
-        domain = extract_domain(r.get("href", "-"))
-        if not is_domain_duplicate(domain):
-            filtered_no_duplicates.append(r)
-            new_domains_list.append(domain)
-            add_domain_to_set(domain)
-        else:
-            print(f"[SKIP] Domain duplicate: {domain}")
-    
-    if not filtered_no_duplicates:
-        print("Semua domain adalah duplikat. Tidak ada yang diproses.")
+    if not results:
+        print("Tidak ada hasil pencarian.")
         return
 
     # Get last ID and start from next
@@ -326,7 +336,42 @@ def main():
     current_id = last_id + 1
 
     print(f"Starting ID: {current_id:08d}")
-    print(f"Total URLs to process: {len(filtered_no_duplicates)}")
+    print(f"Target: {MAX_RESULT} valid domains")
+
+    # Process results until we have MAX_RESULT valid domains
+    new_domains_list = []
+    filtered_no_duplicates = []
+    
+    for r in results:
+        if len(filtered_no_duplicates) >= MAX_RESULT:
+            break
+        
+        domain = extract_domain(r.get("href", "-"))
+        
+        # Check various conditions to skip URL
+        if domain == "unknown":
+            print(f"[SKIP] Invalid domain from URL: {r.get('href', '-')}")
+            continue
+        
+        if is_domain_blocked(domain):
+            print(f"[SKIP] Blocked domain: {domain}")
+            continue
+        
+        if is_domain_duplicate(domain):
+            print(f"[SKIP] Domain duplicate: {domain}")
+            continue
+        
+        # All checks passed - this is a valid domain
+        filtered_no_duplicates.append(r)
+        new_domains_list.append(domain)
+        add_domain_to_set(domain)
+        print(f"[OK] Added domain: {domain}")
+    
+    if not filtered_no_duplicates:
+        print("Tidak ada domain valid yang ditemukan untuk diproses.")
+        return
+
+    print(f"\nTotal valid URLs to process: {len(filtered_no_duplicates)}")
 
     # Process URLs with multithreading for fetching
     all_results = []
@@ -387,13 +432,14 @@ def main():
 
     # Summary
     print(f"\n=== SUMMARY ===")
-    print(f"Total records: {len(all_results)}")
+    print(f"Total records processed: {len(all_results)}")
     print(f"Total unique domains saved: {len(SEEN_DOMAINS)}")
     print(f"Screenshots - Success: {screenshot_success}, Failed: {screenshot_failed}, Skipped: {screenshot_skipped}")
     print(f"Generated at: {timestamp_iso}")
     print(f"Output file: {json_filepath}")
     print(f"Screenshots saved in: {OUTPUT_IMG_DIR}")
     print(f"All domains tracked in: {ALL_DOMAINS_FILE}")
+    print(f"Blocked domains list: {os.path.abspath(BLOCKED_DOMAINS_FILE)}")
 
 
 if __name__ == "__main__":
