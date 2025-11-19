@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "total_records": 4,
+    "generated_at": "2025-11-19T02:26:20.652966Z",
+    "version": "1.2",
+    "keyword": "youtube"
+  },
+  "data": [
+    {
+      "id": "00000046",
+      "title": "YouTube Data API | Google for Developers",
+      "url": "https://developers.google.com/youtube/v3/",
+      "domain": "developers.google.com",
+      "description": "Add YouTube features to your application, including the ability to upload videos, create and manage playlists, and more.",
+      "og_metadata": {
+        "og:title": "YouTube Data API  |  Google for Developers",
+        "og:description": "Add YouTube features to your application, including the ability to upload videos, create and manage playlists, and more.",
+        "og:type": "website",
+        "og:site_name": "Google for Developers"
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000047",
+      "title": "YouTube TV - Watch & DVR Live Sports, Shows & News",
+      "url": "https://tv.youtube.com/welcome/",
+      "domain": "tv.youtube.com",
+      "description": "When YouTube videos are shown on YouTube TV, the majority of the ad revenue from them will support the creators of those videos.",
+      "og_metadata": {
+        "og:title": "YouTube TV - Watch & DVR Live Sports, Shows & News",
+        "og:description": "Stream live TV from ABC, CBS, FOX, NBC, ESPN & popular cable networks in English and Spanish. Record without DVR storage space limits. Try it free. Cancel anytime.",
+        "og:type": "video",
+        "og:site_name": "YouTube TV - Watch & DVR Live Sports, Shows & News"
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000048",
+      "title": "Embed videos & playlists - YouTube Help",
+      "url": "https://support.google.com/youtube/answer/171780?hl=en",
+      "domain": "support.google.com",
+      "description": "The Privacy Enhanced Mode of the YouTube embedded player prevents the use of views of embedded YouTube content from influencing the viewer’s ...",
+      "og_metadata": {
+        "og:title": null,
+        "og:description": null,
+        "og:type": null,
+        "og:site_name": null
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000049",
+      "title": "Embed Plus for YouTube Gallery, Livestream and Lazy Loading",
+      "url": "https://wordpress.org/plugins/youtube-embed-plus/",
+      "domain": "wordpress.org",
+      "description": "In YouTube ’ s/Google ’ s own words, checking this option “ protects against malicious third-party JavaScript being injected into ...",
+      "og_metadata": {
+        "og:title": "Embed Plus for YouTube Gallery, Livestream and Lazy Loading with Facades",
+        "og:description": "A multi-featured plugin to embed YouTube in WordPress. Embed a video, YouTube channel gallery, playlist, or YouTube livestream. Defer JavaScript too!",
+        "og:type": "website",
+        "og:site_name": "WordPress.org"
+      },
+      "screenshot_status": "success"
+    }
+  ]
+}

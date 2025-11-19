@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "total_records": 1,
+    "generated_at": "2025-11-19T02:22:55.702618Z",
+    "version": "1.2",
+    "keyword": "facebook"
+  },
+  "data": [
+    {
+      "id": "00000036",
+      "title": "How to resolve Facebook Login is currently unavailable for this …",
+      "url": "https://stackoverflow.com/questions/68567360/how-to-resolve-facebook-login-is-currently-unavailable-for-this-app-since-we-ar",
+      "domain": "stackoverflow.com",
+      "description": "Jul 28, 2021 · In the facebook developers console for your app, go to App Review-> Permissions and Features. Set the public_profile and email to have advanced access. This will allow all …",
+      "og_metadata": {
+        "og:title": "How to resolve Facebook Login is currently unavailable for this app, since we are updating additional details for this app",
+        "og:description": "I am receiving the Facebook Message Dialog with the message:\nFacebook Login is currently unavailable for this app, since we are updating additional details for this app",
+        "og:type": "website",
+        "og:site_name": "Stack Overflow"
+      },
+      "screenshot_status": "success"
+    }
+  ]
+}

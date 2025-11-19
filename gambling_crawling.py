@@ -17,9 +17,13 @@ BLOCKED_DOMAINS = ["wikipedia.org"]
 OUTPUT_DIR = "/home/aliy/Coding/crawler/output"
 OUTPUT_IMG_DIR = os.path.join(OUTPUT_DIR, "img")
 LAST_ID_FILE = os.path.join(OUTPUT_DIR, "last_id.txt")
+ALL_DOMAINS_FILE = os.path.join(OUTPUT_DIR, "all_domains.txt")
 MAX_WORKERS_FETCH = 5
 MAX_WORKERS_SCREENSHOT = max(2, cpu_count() - 1)  # Use multiple CPU cores for screenshots
-VERSION = "1.2"
+VERSION = "1.3"
+
+# Global set untuk tracking domain (anti-duplikasi)
+SEEN_DOMAINS = set()
 
 # Ensure output directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -37,6 +41,25 @@ def get_last_id():
     return -1
 
 
+def load_seen_domains():
+    """Load all previously seen domains into global set."""
+    global SEEN_DOMAINS
+    SEEN_DOMAINS = set()
+    
+    if os.path.exists(ALL_DOMAINS_FILE):
+        try:
+            with open(ALL_DOMAINS_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    domain = line.strip()
+                    if domain:
+                        SEEN_DOMAINS.add(domain)
+            print(f"[INFO] Loaded {len(SEEN_DOMAINS)} existing domains from {ALL_DOMAINS_FILE}")
+        except Exception as e:
+            print(f"[WARNING] Failed to load domains: {str(e)}")
+    else:
+        print(f"[INFO] No existing domains file. Starting fresh.")
+
+
 def save_last_id(last_id):
     """Save the last ID to file."""
     with open(LAST_ID_FILE, "w") as f:
@@ -51,6 +74,31 @@ def extract_domain(url):
         return domain if domain else "unknown"
     except:
         return "unknown"
+
+
+def is_domain_duplicate(domain):
+    """Check if domain already exists in global set."""
+    return domain in SEEN_DOMAINS
+
+
+def add_domain_to_set(domain):
+    """Add domain to global set."""
+    if domain and domain != "unknown":
+        SEEN_DOMAINS.add(domain)
+
+
+def save_new_domains(new_domains):
+    """Append new domains to all_domains.txt file."""
+    if not new_domains:
+        return
+    
+    try:
+        with open(ALL_DOMAINS_FILE, "a", encoding="utf-8") as f:
+            for domain in new_domains:
+                f.write(domain + "\n")
+        print(f"[INFO] Saved {len(new_domains)} new domains to {ALL_DOMAINS_FILE}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save new domains: {str(e)}")
 
 
 def get_og_data(html):
@@ -234,6 +282,9 @@ def process_screenshots_parallel(all_results):
 
 
 def main():
+    # Load existing domains first
+    load_seen_domains()
+    
     # Get input
     query = input("Masukkan keyword: ")
     print(f"\n=== PENCARIAN: {query} ===")
@@ -253,12 +304,29 @@ def main():
         print("Tidak ada hasil setelah filter.")
         return
 
+    # Filter duplicate domains
+    new_domains_list = []
+    filtered_no_duplicates = []
+    
+    for r in filtered:
+        domain = extract_domain(r.get("href", "-"))
+        if not is_domain_duplicate(domain):
+            filtered_no_duplicates.append(r)
+            new_domains_list.append(domain)
+            add_domain_to_set(domain)
+        else:
+            print(f"[SKIP] Domain duplicate: {domain}")
+    
+    if not filtered_no_duplicates:
+        print("Semua domain adalah duplikat. Tidak ada yang diproses.")
+        return
+
     # Get last ID and start from next
     last_id = get_last_id()
     current_id = last_id + 1
 
     print(f"Starting ID: {current_id:08d}")
-    print(f"Total URLs to process: {len(filtered)}")
+    print(f"Total URLs to process: {len(filtered_no_duplicates)}")
 
     # Process URLs with multithreading for fetching
     all_results = []
@@ -266,7 +334,7 @@ def main():
     with ThreadPoolExecutor(max_workers=MAX_WORKERS_FETCH) as executor:
         futures = {
             executor.submit(fetch_url_data, url_item, idx + 1, current_id + idx): idx
-            for idx, url_item in enumerate(filtered)
+            for idx, url_item in enumerate(filtered_no_duplicates)
         }
 
         for future in as_completed(futures):
@@ -309,6 +377,9 @@ def main():
     save_last_id(final_id)
     print(f"✓ Last ID updated: {final_id:08d} (saved in {LAST_ID_FILE})")
 
+    # Save new domains to file
+    save_new_domains(new_domains_list)
+
     # Count screenshot results
     screenshot_success = sum(1 for r in all_results if r.get("screenshot_status") == "success")
     screenshot_failed = sum(1 for r in all_results if r.get("screenshot_status") == "failed")
@@ -317,10 +388,12 @@ def main():
     # Summary
     print(f"\n=== SUMMARY ===")
     print(f"Total records: {len(all_results)}")
+    print(f"Total unique domains saved: {len(SEEN_DOMAINS)}")
     print(f"Screenshots - Success: {screenshot_success}, Failed: {screenshot_failed}, Skipped: {screenshot_skipped}")
     print(f"Generated at: {timestamp_iso}")
     print(f"Output file: {json_filepath}")
     print(f"Screenshots saved in: {OUTPUT_IMG_DIR}")
+    print(f"All domains tracked in: {ALL_DOMAINS_FILE}")
 
 
 if __name__ == "__main__":

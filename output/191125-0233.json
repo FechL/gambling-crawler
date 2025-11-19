@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "total_records": 5,
+    "generated_at": "2025-11-19T02:33:58.475285Z",
+    "version": "1.2",
+    "keyword": "youtube"
+  },
+  "data": [
+    {
+      "id": "00000050",
+      "title": "YouTube - Apps on Google Play",
+      "url": "https://play.google.com/store/apps/details?id=com.google.android.youtube&hl=en-GB&gl=GB",
+      "domain": "play.google.com",
+      "description": "5 days ago · Get the official YouTube app on Android phones and tablets. See what the world is watching -- from the hottest music videos to what’s popular in gaming, fashion, beauty, news, …",
+      "og_metadata": {
+        "og:title": "YouTube – Apps on Google Play",
+        "og:description": "Enjoy your favourite videos and channels with the official YouTube app.",
+        "og:type": "website",
+        "og:site_name": null
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000051",
+      "title": "YouTube App - App Store",
+      "url": "https://apps.apple.com/us/app/youtube/id544007664",
+      "domain": "apps.apple.com",
+      "description": "Get the official YouTube app on iPhones and iPads. See what the world is watching -- from the hottest music videos to what’s popular in gaming, fashion, beauty, news, learning and more.",
+      "og_metadata": {
+        "og:title": "YouTube App - App Store",
+        "og:description": "Download YouTube by Google on the App Store. See screenshots, ratings and reviews, user tips, and more games like YouTube.",
+        "og:type": null,
+        "og:site_name": "App Store"
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000052",
+      "title": "Official YouTube Blog for Latest YouTube News & Insights",
+      "url": "https://blog.youtube/",
+      "domain": "blog.youtube",
+      "description": "Nov 12, 2025 · Explore our official blog for the latest news about YouTube, creator and artist profiles, culture and trends analyses, and behind-the-scenes insights.",
+      "og_metadata": {
+        "og:title": "YouTube Official Blog",
+        "og:description": "Explore our official blog for the latest news about YouTube, creator and artist profiles, culture and trends analyses, and behind-the-scenes insights.",
+        "og:type": "website",
+        "og:site_name": "blog.youtube"
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000053",
+      "title": "YouTube - App on Amazon Appstore",
+      "url": "https://www.amazon.com/Google-LLC-YouTube/dp/B07T771SPH",
+      "domain": "www.amazon.com",
+      "description": "Supports multiple accounts - Everyone at home can sign into YouTube with a Google account to see recommendations, subscriptions, and playlists. Play YouTube videos from your phone on …",
+      "og_metadata": {
+        "og:title": null,
+        "og:description": null,
+        "og:type": null,
+        "og:site_name": null
+      },
+      "screenshot_status": "success"
+    },
+    {
+      "id": "00000054",
+      "title": "YouTube Music",
+      "url": "https://music.youtube.com/",
+      "domain": "music.youtube.com",
+      "description": "With the YouTube Music app, enjoy over 100 million songs at your fingertips, plus albums, playlists, remixes, music videos, live performances, covers, and hard-to-find music you can’t get...",
+      "og_metadata": {
+        "og:title": null,
+        "og:description": null,
+        "og:type": null,
+        "og:site_name": null
+      },
+      "screenshot_status": "success"
+    }
+  ]
+}
