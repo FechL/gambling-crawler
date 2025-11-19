@@ -29,9 +29,9 @@ pip install -r requirements.txt
 sudo apt-get install chromium-browser chromium-chromedriver
 ```
 ## Penggunaan
-
+```bash
 python crawler.py
-
+```
 Program akan meminta keyword pencarian. Hasil akan disimpan di folder output.
 
 ## Konfigurasi
