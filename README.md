@@ -2,7 +2,7 @@
 
 Web crawler untuk mencari dan mengumpulkan informasi domain terkait perjudian menggunakan search engine DuckDuckGo.
 
-## Fitur
+## Fitur (v1.4)
 
 - Pencarian domain perjudian melalui DuckDuckGo API
 - Anti-duplikasi domain secara otomatis
@@ -43,7 +43,13 @@ Edit bagian Configuration di gambling_crawling.py:
 - MAX_RESULT = 10 (jumlah domain per run)
 - MAX_WORKERS_FETCH = 5 (concurrent workers)
 
-File Penting
+## Output
+
+Setiap run menghasilkan file JSON dengan format timestamp (DDMMYY-HHMM.json) berisi:
+- Metadata: total records, timestamp, version, keyword
+- Data: array domain dengan ID, URL, OG metadata, status screenshot
+
+## File Penjelasan
 
 - gambling_crawling.py: Script utama
 - blocked_domains.txt: Daftar domain yang diblokir
@@ -51,12 +57,6 @@ File Penting
 - output/last_id.txt: ID terakhir yang digunakan
 - output/*.json: Hasil crawling per run
 - output/img/: Folder screenshot
-
-## Output
-
-Setiap run menghasilkan file JSON dengan format timestamp (DDMMYY-HHMM.json) berisi:
-- Metadata: total records, timestamp, version, keyword
-- Data: array domain dengan ID, URL, OG metadata, status screenshot
 
 ## Troubleshooting
 
