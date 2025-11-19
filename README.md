@@ -1,4 +1,4 @@
-# Gambling Domain Crawler
+# Domain Crawler Based Keyword
 
 Web crawler untuk mencari dan mengumpulkan informasi domain terkait perjudian menggunakan search engine DuckDuckGo.
 
