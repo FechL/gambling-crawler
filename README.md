@@ -1,4 +1,4 @@
-# Domain Crawler Based Keyword
+# Keyword-Based Domain Crawler
 
 Web crawler untuk mencari dan mengumpulkan informasi domain terkait perjudian menggunakan search engine DuckDuckGo.
 
@@ -17,10 +17,10 @@ Web crawler untuk mencari dan mengumpulkan informasi domain terkait perjudian me
 
 1. Clone repository:
 
-git clone https://github.com/FechL/gambling-crawler.git
-cd gambling-crawler
+git clone https://github.com/FechL/keyword-based-crawler.git
+cd keyword-based-crawler
 
-2. Install dependencies:
+1. Install dependencies:
 
 pip install -r requirements.txt
 
@@ -30,7 +30,7 @@ sudo apt-get install chromium-browser chromium-chromedriver
 
 ## Penggunaan
 
-python gambling_crawling.py
+python crawler.py
 
 Program akan meminta keyword pencarian. Hasil akan disimpan di folder output.
 
